@@ -1,0 +1,32 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Copy files via scp
+        run: |
+          scp -r -o StrictHostKeyChecking=no ./* ubuntu@3.141.6.165:/home/ubuntu/my-strapi-project
+
+      - name: SSH and deploy
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@3.141.6.165 << 'EOF'
+            cd /home/ubuntu/my-strapi-project
+            npm install
+            npm run build
+            pm2 restart strapi-app || pm2 start npm --name "strapi-app" -- start
+          EOF
